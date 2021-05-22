@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http/httputil"
+	"net/http"
 	"strings"
 	"time"
 	"fmt"
@@ -53,7 +54,31 @@ func HandleHTTPClient(Sc *httputil.ServerConn, ThisClient int, ClientId string, 
 		FullUl := r.URL.String()
 		reqest_type := r.Header.Get("Content-Type")
 		//block := false
-		log.Println(" URL ", FullUl, reqest_type)
+		log.Println(" URL ", FullUl, reqest_type, r.URL.Path)
+
+		script_file, has_script_for_host := userscripts[r.URL.Host]
+
+		if r.URL.Path == "/injection_script.js" {
+			log.Println("returning script")
+			script_src, err := ioutil.ReadFile("userscripts/"+script_file)
+			if err != nil {
+				log.Fatal("could not open script file", err)
+			}
+			resp := &http.Response{
+				Status:        "200 OK",
+				StatusCode:    200,
+				ContentLength: int64(len(script_src)),
+				Body:          ioutil.NopCloser(bytes.NewReader(script_src)),
+				Proto:         "HTTP/1.1",
+				ProtoMajor:    1,
+				ProtoMinor:    1,
+				Header:        make(http.Header),
+				Close:         false,
+			}
+			resp.Header.Set("Content-Type", "text/html")
+			Sc.Write(r, resp)
+			continue
+		}
 
 		//Infotext := "You tried to download: '" + FullUl + "'.\n"
 
@@ -88,7 +113,6 @@ func HandleHTTPClient(Sc *httputil.ServerConn, ThisClient int, ClientId string, 
 			return
 		}
 
-		script_url, has_script_for_host := userscripts[r.URL.Host]
 		if has_script_for_host {
 
 			response_type := resp.Header.Get("Content-Type")
@@ -105,7 +129,7 @@ func HandleHTTPClient(Sc *httputil.ServerConn, ThisClient int, ClientId string, 
 			if strings.Contains(response_type, "text/html") {
 				log.Println("inserting script")
 				body_txt := string(response_body)
-				fixed_body := strings.Replace(body_txt, "<head>", "<head><script src=\""+script_url+"\"></script>", 1)
+				fixed_body := strings.Replace(body_txt, "<head>", "<head><script src=\"/injection_script.js\"></script>", 1)
 				response_body = []byte(fixed_body)
 			}
 			resp.Body = ioutil.NopCloser(bytes.NewReader(response_body))
@@ -203,7 +227,7 @@ func main() {
 	dumpnr = 0
 	ApprovedSenders = []string{}
 	userscripts = map[string]string{
-		"www.youtube.com": "https://raw.githubusercontent.com/calledit/mitim_userscripts/main/userscripts/youtube.ads.user.js",
+		"www.youtube.com": "youtube.ads.skip2.user.js",
 	}
 
 	Certificates = make(map[string]*tls.Certificate)
