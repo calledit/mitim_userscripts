@@ -25,6 +25,8 @@ var Certificates map[string]*tls.Certificate
 var CerticitateLock sync.Mutex
 var TLSconfig *tls.Config
 
+var userscripts map[string]string
+
 
 var BlockGoogleVideo bool
 
@@ -86,8 +88,8 @@ func HandleHTTPClient(Sc *httputil.ServerConn, ThisClient int, ClientId string, 
 			return
 		}
 
-		//Youtube is the proof of concept
-		if r.URL.Host == "www.youtube.com" {
+		script_url, has_script_for_host := userscripts[r.URL.Host]
+		if has_script_for_host {
 
 			response_type := resp.Header.Get("Content-Type")
 
@@ -100,13 +102,11 @@ func HandleHTTPClient(Sc *httputil.ServerConn, ThisClient int, ClientId string, 
 			if err != nil {
 				log.Fatal(err)
 			}
-			script_url := "https://greasyfork.org/scripts/406876-no-more-youtube-ads-updated/code/No%20more%20youtube%20ads!%20-%20UPDATED.user.js"
 			if strings.Contains(response_type, "text/html") {
 				log.Println("inserting script")
 				body_txt := string(response_body)
 				fixed_body := strings.Replace(body_txt, "<head>", "<head><script src=\""+script_url+"\"></script>", 1)
 				response_body = []byte(fixed_body)
-				//log.Println("datatype:", response_type, "data:", r.URL.Host, body_txt)
 			}
 			resp.Body = ioutil.NopCloser(bytes.NewReader(response_body))
 			resp.ContentLength = int64(len(response_body))
@@ -141,7 +141,7 @@ func httpConHandler(TcpConnection *net.TCPConn, ConID int) {
 func TLSConHandler(TcpConnection *net.TCPConn, ConID int) {
 
 
-	//Applt tls encryption
+	//Apply tls encryption
 	TlsConenction := tls.Server(TcpConnection, TLSconfig)
 
 	//Handle Http stuff
@@ -202,6 +202,9 @@ func main() {
 	ConID = 0
 	dumpnr = 0
 	ApprovedSenders = []string{}
+	userscripts = map[string]string{
+		"www.youtube.com": "https://raw.githubusercontent.com/calledit/mitim_userscripts/main/userscripts/youtube.ads.user.js",
+	}
 
 	Certificates = make(map[string]*tls.Certificate)
 
@@ -234,7 +237,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//tlsListener := &tls.NewListener(HttpsSocket, config)
 	defer HttpsSocket.Close()
 	AcceptConenctions(HttpsSocket, TLSConHandler)
 
