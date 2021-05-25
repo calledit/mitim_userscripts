@@ -17,9 +17,9 @@ Direct trafic to the server using iptables
 
 /etc/host example to insert a user script in to youtube
 ```
-10.100.222.222 youtube.com
-10.100.222.222 www.youtube.com
-10.100.222.222 youtube-ui.l.google.com
+10.100.222.111 youtube.com
+10.100.222.111 www.youtube.com
+10.100.222.111 youtube-ui.l.google.com
 ```
 
 
